@@ -15,6 +15,9 @@ public class Servidor {
     static Socket clientSocket1;
     static Socket clientSocket2;
 
+    static String clientID1;
+    static String clientID2;
+
     static Jogador jogador1;
     static Jogador jogador2;
     static int winnerID;
@@ -30,6 +33,8 @@ public class Servidor {
         if ("mainServer".equals(serverType)) {
             try {
                 serverSocket_main = new ServerSocket(20000);
+                serverSocket_main.setSoTimeout(999999999);
+
                 System.out.println("Criando o Server Socket...");
             } catch (IOException e) {
                 System.out.println("Não foi criado o Server Socket.\nCódigo do erro: " + e);
@@ -37,6 +42,7 @@ public class Servidor {
         } else if ("updateServer".equals(serverType)) {
             try {
                 serverSocket_updater = new ServerSocket(10000);
+                serverSocket_updater.setSoTimeout(0);
                 System.out.println("Criando o Update Server Socket...");
             } catch (IOException e) {
                 System.out.println("Não foi criado o Updater Server Socket.\nCódigo do erro: " + e);
@@ -50,17 +56,16 @@ public class Servidor {
 
             try {
                 Thread.sleep(1000);
-                conexao.sendCommand(clientSocket1, "prepareToReceive Enemy");
-                conexao.sendCommand(clientSocket2, "prepareToReceive Enemy");
-                Thread.sleep(1000);
                 conexao.sendPlayer(clientSocket1, jogador2);
+                Thread.sleep(100);
                 conexao.sendPlayer(clientSocket2, jogador1);
-                
+
                 System.out.println("Preparando Jogo");
 
+                Thread.sleep(1000);
                 conexao.sendCommand(clientSocket1, "startGame");
                 conexao.sendCommand(clientSocket2, "startGame");
-                
+
                 System.out.println("Iniciando Jogo");
 
             } catch (Exception e) {
@@ -72,96 +77,108 @@ public class Servidor {
 
             boolean erro;
 
-            boolean attack1, attack2;
-            boolean defense1, defense2;
+            int defesa1 = 0, defesa2 = 0;
+            boolean attack1 = false, attack2 = false;
 
-            while (whileBreaker_GamingSession) {
-                defense1 = false;
-                defense2 = false;
+            while (whileBreaker_GamingSession == false) {
+                
                 attack1 = false;
                 attack2 = false;
+
                 erro = false;
 
                 try {
+
                     gamingCommand1 = conexao.receiveCommand(clientSocket1);
                     gamingCommand2 = conexao.receiveCommand(clientSocket2);
 
-                    switch (gamingCommand1) {
+                    System.out.println(gamingCommand1.trim() + " | " + gamingCommand2.trim());
+
+                    switch (gamingCommand1.trim()) {
                         case "atacar":
-                            jogador2.setVida(jogador2.getVida() - 10);
+                            if (defesa2 >= 1) {
+                                --defesa2;
+                                conexao.sendCommand(clientSocket1, "player2 defended");
+                                Thread.sleep(100);
+                                conexao.sendCommand(clientSocket2, "player2 defended");
+                            } else {
+                                attack1 = true;
+                            }
                             break;
 
                         case "defender":
-                            defense2 = true;
+                            ++defesa1;
+                            conexao.sendCommand(clientSocket1, "defense increased");
                             break;
 
                         case "curar":
                             jogador1.setVida(jogador1.getVida() + 15);
+                            conexao.sendCommand(clientSocket1, "cure");
                             break;
 
                         case "desistir":
                             jogador1.setVida(0);
+                            conexao.sendCommand(clientSocket1, "endgame player2win");
+                            conexao.sendCommand(clientSocket2, "endgame player2win");
                             break;
                         case "status":
                             conexao.sendCommand(clientSocket1, "sendingStatus");
                             break;
                         default:
-                            erro = true;
                             conexao.sendCommand(clientSocket1, "wrongCommand");
                     }
-                    switch (gamingCommand2) {
+                    switch (gamingCommand2.trim()) {
                         case "atacar":
-                            attack2 = true;
+                            if (defesa1 >= 1) {
+                                --defesa1;
+                                conexao.sendCommand(clientSocket1, "player1 defended");
+                                conexao.sendCommand(clientSocket2, "player1 defended");
+                            } else {
+                                attack2 = true;
+                            }
                             break;
 
                         case "defender":
-                            defense2 = true;
+                            ++defesa2;
+                            conexao.sendCommand(clientSocket2, "defense increased");
                             break;
 
                         case "curar":
                             jogador2.setVida(jogador2.getVida() + 15);
+                            conexao.sendCommand(clientSocket2, "cure");
                             break;
 
                         case "desistir":
                             jogador2.setVida(0);
+                            conexao.sendCommand(clientSocket1, "endgame player1win");
+                            conexao.sendCommand(clientSocket2, "endgame player1win");
                             break;
                         case "status":
                             conexao.sendCommand(clientSocket2, "sendingStatus");
                             break;
                         default:
-                            erro = true;
                             conexao.sendCommand(clientSocket2, "wrongCommand");
                     }
-                    if (defense1 == true) {
-                        if (attack2 == true) {
-                            conexao.sendCommand(clientSocket1, "player1 defended");
-                            conexao.sendCommand(clientSocket2, "player1 defended");
-                        }
-                        conexao.sendCommand(clientSocket1, "you defended nothing");
-                    } else {
-                        if (attack2 == true) {
-                            conexao.sendCommand(clientSocket1, "player2 attacked");
-                            jogador1.setVida(jogador1.getVida() - 10);
-                        }
-                    }
-                    if (defense2 == true) {
-                        if (attack1 == true) {
-                            conexao.sendCommand(clientSocket1, "player2 defended");
-                            conexao.sendCommand(clientSocket2, "player2 defended");
-                        }
-                        conexao.sendCommand(clientSocket2, "you defended nothing");
-                    } else {
-                        if (attack1 == true) {
-                            conexao.sendCommand(clientSocket2, "player1 attacked");
-                            jogador1.setVida(jogador1.getVida() - 10);
-                        }
-                    }
 
-                    if (!erro == true) {
-                        conexao.sendCommand(clientSocket1, "continue");
-                    }
-                    if (!erro == true) {
-                        conexao.sendCommand(clientSocket2, "continue");
+                    if (attack1 == true && attack2 == true) {
+                        jogador1.setVida(jogador1.getVida() - 10);
+                        jogador2.setVida(jogador2.getVida() - 10);
+
+                        conexao.sendCommand(clientSocket1, "both attacked");
+                        Thread.sleep(100);
+                        conexao.sendCommand(clientSocket2, "both attacked");
+                    } else {
+                        if (attack1 == true) {
+                            jogador1.setVida(jogador1.getVida() - 10);
+                            conexao.sendCommand(clientSocket1, "player1 attacked");
+                            Thread.sleep(100);
+                            conexao.sendCommand(clientSocket2, "player1 attacked");
+                        }
+                        if (attack2 == true) {
+                            jogador2.setVida(jogador2.getVida() - 10);
+                            conexao.sendCommand(clientSocket1, "player2 attacked");
+                            conexao.sendCommand(clientSocket2, "player2 attacked");
+                        }
                     }
 
                 } catch (Exception e) {
@@ -191,7 +208,7 @@ public class Servidor {
                     conexao.sendPlayer(clientSocketUpdater1, jogador2);
                     conexao.sendPlayer(clientSocketUpdater2, jogador1);
                     conexao.sendPlayer(clientSocketUpdater2, jogador2);
-                    Thread.sleep(100);
+
                 } catch (Exception e) {
                     System.out.println("Envio de atualização mal-sucedida, erro: " + e);
                 }
@@ -209,17 +226,16 @@ public class Servidor {
             clientSocket1 = serverSocket_main.accept();
             if (clientSocket1.isConnected()) {
                 System.out.println("Jogador 1 entrou");
+                clientSocket1.setReuseAddress(true);
+
                 jogador1 = conexao.receivePlayer(clientSocket1);
                 jogador1.setId(1);
+                clientID1 = clientSocket1.getInetAddress().getHostAddress();
                 conexao.sendPlayer(clientSocket1, jogador1);
-                System.out.println(jogador1.toString());
             }
         } catch (Exception e) {
             System.out.println("Conexão mal sucedida.\nCódigo do erro: " + e);
         }
-        
-        new Thread(updateClients).start();
-        conexao.sendCommand(clientSocket1, "Connection Success");
 
         try {
             clientSocket2 = serverSocket_main.accept();
@@ -227,14 +243,15 @@ public class Servidor {
                 System.out.println("Jogador 2 entrou");
                 jogador2 = conexao.receivePlayer(clientSocket2);
                 jogador2.setId(2);
+                clientID2 = clientSocket2.getInetAddress().getHostAddress();
                 conexao.sendPlayer(clientSocket2, jogador2);
             }
         } catch (IOException e) {
             System.out.println("Conexão mal sucedida.\nCódigo do erro: " + e);
         }
-        conexao.sendCommand(clientSocket2, "Connection Success");
-
+        Thread.sleep(1000);
         new Thread(gamingSession).start();
+        new Thread(updateClients).start();
 
         boolean whileBreakerEndGame = false;
         while (whileBreakerEndGame == false) {
