@@ -5,7 +5,7 @@ import java.io.Serializable;
 public class Jogador implements Serializable {
     
     private int id;
-    private final String nome;
+    private String nome;
     private int vida = 100;
     
     

@@ -1,6 +1,7 @@
 package pvpsocket;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -16,7 +17,7 @@ public class Conexao {
     
     public Jogador receivePlayer(Socket socket) throws Exception {
         InputStream in;
-        byte[] buffer = new byte[2048];
+        byte[] buffer = new byte[1024];
         Jogador jogador;
         
         try {
@@ -36,13 +37,16 @@ public class Conexao {
     }
     
     public void sendPlayer(Socket socket, Jogador jogador) throws Exception {
-        OutputStream out;
         
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
+        final ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(jogador);
+        final byte[] data = baos.toByteArray();
+        
+        OutputStream out;
         try {
             out = socket.getOutputStream();
-            ObjectOutputStream objOut = new ObjectOutputStream(out);
-            objOut.writeObject(jogador);
-            objOut.flush();
+            out.write(data);
         } catch (IOException e) {
             System.out.println("Exceção no OutputStream: " + e);
         }

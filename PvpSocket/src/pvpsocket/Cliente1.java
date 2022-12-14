@@ -21,6 +21,8 @@ public class Cliente1 {
     static Scanner scan;
     static Conexao conexao;
 
+    static String command;
+
     static boolean whileBreaker_gamingSession, whileBreaker_updater;
 
     public static void connectServer(String serverType) {
@@ -47,10 +49,10 @@ public class Cliente1 {
         public void run() {
             whileBreaker_gamingSession = false;
 
-            try {
-                System.out.println("Digite um dos comandos abaixo: \natacar | defender | curar | desistir | status");
-                while (whileBreaker_gamingSession == false) {
-                    System.out.print(">> ");
+            System.out.println("Digite um dos comandos abaixo: \natacar | defender | curar | desistir | status");
+            while (whileBreaker_gamingSession == false) {
+                System.out.print(">> ");
+                try {
                     conexao.sendCommand(mainSocket, scan.nextLine());
 
                     switch (conexao.receiveCommand(mainSocket)) {
@@ -120,10 +122,12 @@ public class Cliente1 {
                     }
                     System.out.println("");
                     System.out.println("");
+
+                } catch (Exception e) {
+                    System.out.println("Erro na sessão, erro: " + e);
                 }
-            } catch (Exception e) {
-                System.out.println("Erro na sessão, erro: " + e);
             }
+
         }
     };
 
@@ -144,7 +148,7 @@ public class Cliente1 {
     public static void main(String[] args) {
         scan = new Scanner(in);
         conexao = new Conexao();
-        
+
         System.out.print("Digite seu nome: ");
         jogador = new Jogador(scan.nextLine());
 
@@ -153,10 +157,7 @@ public class Cliente1 {
             conexao.sendPlayer(mainSocket, jogador);
             Thread.sleep(1000);
             jogador = conexao.receivePlayer(mainSocket);
-            if ("Connection Success".equals(conexao.receiveCommand(mainSocket))) {
-                connectServer("updateSocket");
-                new Thread(updater).start();
-            }
+            System.out.println(jogador.toString());
 
         } catch (Exception e) {
             System.out.println("Erro ao iniciar uma conexão com o servidor, erro: " + e);
@@ -164,16 +165,27 @@ public class Cliente1 {
 
         System.out.println("Aguarde o inimigo entrar para iniciar a sessão...");
 
-        try {
-            if ("prepareToReceive Enemy".equals(conexao.receiveCommand(mainSocket))) {
-                inimigo = conexao.receivePlayer(mainSocket);
-            }
-            if ("startGame".equals(conexao.receiveCommand(mainSocket))) {
-                new Thread(gamingSession).start();
-            }
-        } catch (Exception e) {
-            System.out.println("Erro de conexão, erro: " + e);
-        }
+        boolean whileBreaker1 = false;
+        while (whileBreaker1 == false) {
+            try {
+                command = conexao.receiveCommand(mainSocket);
+                System.out.println(command);
+                if ("prepareToReceive Enemy".equals(command)) {
+                    inimigo = conexao.receivePlayer(mainSocket);
 
+                    System.out.println(inimigo);
+                    command = conexao.receiveCommand(mainSocket);
+                    if ("startGame".equals(command)) {
+                        connectServer("updateSocket");
+                        new Thread(updater).start();
+                        new Thread(gamingSession).start();
+                        whileBreaker1 = true;
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("Erro de conexão, erro: " + e);
+            }
+        }
+        System.out.println("END");
     }
 }

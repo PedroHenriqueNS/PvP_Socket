@@ -5,6 +5,7 @@
 package pvpsocket;
 
 import java.io.IOException;
+import static java.lang.System.in;
 import java.net.Socket;
 import java.util.Scanner;
 
@@ -27,12 +28,13 @@ public class Cliente2 {
     public static void connectServer(String serverType) {
         if ("mainSocket".equals(serverType)) {
             try {
-                mainSocket = new Socket("localhost", 9000);
+                mainSocket = new Socket("localhost", 20000);
                 System.out.println("Criando o Main Socket...");
             } catch (IOException e) {
                 System.out.println("Não foi criado o Main Socket.\nCódigo do erro: " + e);
             }
-        } else if ("updateSocket".equals(serverType)) {
+        }
+        if ("updateSocket".equals(serverType)) {
             try {
                 updateSocket = new Socket("localhost", 10000);
                 System.out.println("Criando o Updater Socket...");
@@ -142,33 +144,42 @@ public class Cliente2 {
     };
 
     public static void main(String[] args) {
+        scan = new Scanner(in);
+        conexao = new Conexao();
+
         System.out.print("Digite seu nome: ");
         jogador = new Jogador(scan.nextLine());
 
         try {
             connectServer("mainSocket");
             conexao.sendPlayer(mainSocket, jogador);
+            Thread.sleep(1000);
             jogador = conexao.receivePlayer(mainSocket);
+            System.out.println(jogador.toString());
 
-            if ("Connection Success".equals(conexao.receiveCommand(mainSocket))) {
-                connectServer("updateSocket");
-                new Thread(updater).start();
-            }
         } catch (Exception e) {
             System.out.println("Erro ao iniciar uma conexão com o servidor, erro: " + e);
         }
 
         System.out.println("Aguarde o inimigo entrar para iniciar a sessão...");
 
-        try {
-            if ("prepareToReceive Enemy".equals(conexao.receiveCommand(mainSocket))) {
-                inimigo = conexao.receivePlayer(mainSocket);
+        boolean whileBreaker1 = false;
+        while (whileBreaker1 == false) {
+            try {
+                if ("prepareToReceive Enemy".equals(conexao.receiveCommand(mainSocket))) {
+                    inimigo = conexao.receivePlayer(mainSocket);
+
+                    if ("startGame".equals(conexao.receiveCommand(mainSocket))) {
+                        connectServer("updateSocket");
+                        new Thread(updater).start();
+                        new Thread(gamingSession).start();
+                        whileBreaker1 = true;
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("Erro de conexão, erro: " + e);
             }
-            if ("startGame".equals(conexao.receiveCommand(mainSocket))) {
-                new Thread(gamingSession).start();
-            }
-        } catch (Exception e) {
-            System.out.println("Erro de conexão, erro: " + e);
         }
+        System.out.println("END");
     }
 }

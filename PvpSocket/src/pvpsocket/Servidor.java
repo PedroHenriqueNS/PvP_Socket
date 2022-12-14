@@ -47,14 +47,22 @@ public class Servidor {
     private static Runnable gamingSession = new Runnable() {
         @Override
         public void run() {
+
             try {
+                Thread.sleep(1000);
                 conexao.sendCommand(clientSocket1, "prepareToReceive Enemy");
                 conexao.sendCommand(clientSocket2, "prepareToReceive Enemy");
+                Thread.sleep(1000);
                 conexao.sendPlayer(clientSocket1, jogador2);
                 conexao.sendPlayer(clientSocket2, jogador1);
+                
+                System.out.println("Preparando Jogo");
 
                 conexao.sendCommand(clientSocket1, "startGame");
                 conexao.sendCommand(clientSocket2, "startGame");
+                
+                System.out.println("Iniciando Jogo");
+
             } catch (Exception e) {
                 System.out.println("Erro de envio de informação, erro: " + e);
             }
@@ -167,42 +175,22 @@ public class Servidor {
     private static Runnable updateClients = new Runnable() {
         @Override
         public void run() {
-            Socket clientSocketUpdater1;
-            Socket clientSocketUpdater2;
+            Socket clientSocketUpdater1 = null, clientSocketUpdater2 = null;
 
-            while (whileBreaker_Updater == false) {
-                try {
-                    clientSocketUpdater1 = serverSocket_updater.accept();
-                    if (clientSocketUpdater1.getInetAddress() == clientSocket1.getInetAddress()) {
-                        whileBreaker_Updater = true;
-                    } else {
-                        System.out.println("Client errado tentando conexão com Updater");
-                    }
-                } catch (IOException e) {
-                    System.out.println("Conexão mal sucedida.\nCódigo do erro: " + e);
-                }
-            }
-            whileBreaker_Updater = false;
-            while (whileBreaker_Updater == false) {
-                try {
-                    clientSocketUpdater2 = serverSocket_updater.accept();
-                    if (clientSocketUpdater2.getInetAddress() == clientSocket2.getInetAddress()) {
-                        whileBreaker_Updater = true;
-                    } else {
-                        System.out.println("Client errado tentando conexão com Updater");
-                    }
-                } catch (IOException e) {
-                    System.out.println("Conexão mal sucedida.\nCódigo do erro: " + e);
-                }
+            try {
+                clientSocketUpdater1 = serverSocket_updater.accept();
+                clientSocketUpdater2 = serverSocket_updater.accept();
+            } catch (IOException e) {
+                System.out.println("Conexão mal sucedida.\nCódigo do erro: " + e);
             }
             whileBreaker_Updater = false;
 
             while (whileBreaker_Updater == false) {
                 try {
-                    conexao.sendPlayer(clientSocket1, jogador1);
-                    conexao.sendPlayer(clientSocket1, jogador2);
-                    conexao.sendPlayer(clientSocket2, jogador1);
-                    conexao.sendPlayer(clientSocket2, jogador2);
+                    conexao.sendPlayer(clientSocketUpdater1, jogador1);
+                    conexao.sendPlayer(clientSocketUpdater1, jogador2);
+                    conexao.sendPlayer(clientSocketUpdater2, jogador1);
+                    conexao.sendPlayer(clientSocketUpdater2, jogador2);
                     Thread.sleep(100);
                 } catch (Exception e) {
                     System.out.println("Envio de atualização mal-sucedida, erro: " + e);
@@ -213,7 +201,8 @@ public class Servidor {
 
     public static void main(String[] args) throws Exception {
         createServer("mainServer");
-        
+        createServer("updateServer");
+
         conexao = new Conexao();
 
         try {
@@ -223,13 +212,12 @@ public class Servidor {
                 jogador1 = conexao.receivePlayer(clientSocket1);
                 jogador1.setId(1);
                 conexao.sendPlayer(clientSocket1, jogador1);
+                System.out.println(jogador1.toString());
             }
         } catch (Exception e) {
             System.out.println("Conexão mal sucedida.\nCódigo do erro: " + e);
         }
-
-        createServer("updateServer");
-
+        
         new Thread(updateClients).start();
         conexao.sendCommand(clientSocket1, "Connection Success");
 
