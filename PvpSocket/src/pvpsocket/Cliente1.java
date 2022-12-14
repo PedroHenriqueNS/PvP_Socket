@@ -205,8 +205,8 @@ public class Cliente1 {
             command = conexao.receiveCommand(mainSocket);
             if ("startGame".equals(command.trim())) {
                 System.out.println("Iniciando Jogo...");
-                new Thread(updater).start();
-                Thread.sleep(1000);
+                //new Thread(updater).start();
+                //Thread.sleep(1000);
                 new Thread(gamingSession).start();
             }
 

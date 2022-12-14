@@ -81,7 +81,7 @@ public class Servidor {
             boolean attack1 = false, attack2 = false;
 
             while (whileBreaker_GamingSession == false) {
-                
+
                 attack1 = false;
                 attack2 = false;
 
@@ -120,6 +120,9 @@ public class Servidor {
                             jogador1.setVida(0);
                             conexao.sendCommand(clientSocket1, "endgame player2win");
                             conexao.sendCommand(clientSocket2, "endgame player2win");
+                            
+                            winnerID = jogador2.getId();
+                            endGame = true;
                             break;
                         case "status":
                             conexao.sendCommand(clientSocket1, "sendingStatus");
@@ -152,6 +155,9 @@ public class Servidor {
                             jogador2.setVida(0);
                             conexao.sendCommand(clientSocket1, "endgame player1win");
                             conexao.sendCommand(clientSocket2, "endgame player1win");
+
+                            winnerID = jogador1.getId();
+                            endGame = true;
                             break;
                         case "status":
                             conexao.sendCommand(clientSocket2, "sendingStatus");
@@ -251,8 +257,9 @@ public class Servidor {
         }
         Thread.sleep(1000);
         new Thread(gamingSession).start();
-        new Thread(updateClients).start();
+        //new Thread(updateClients).start();
 
+        endGame = false;
         boolean whileBreakerEndGame = false;
         while (whileBreakerEndGame == false) {
             if (jogador1.getVida() <= 0) {
@@ -267,23 +274,14 @@ public class Servidor {
             }
 
             if (endGame == true) {
-                whileBreakerEndGame = false;
+                whileBreakerEndGame = true;
+                whileBreaker_Updater = true;
+
+                clientSocket1.close();
+                clientSocket2.close();
+                serverSocket_main.close();
+                serverSocket_updater.close();
             }
         }
-
-        if (jogador1.getId() == winnerID) {
-            conexao.sendCommand(clientSocket1, "endgame player1win");
-            conexao.sendCommand(clientSocket2, "endgame player1win");
-        } else {
-            conexao.sendCommand(clientSocket1, "endgame player2win");
-            conexao.sendCommand(clientSocket2, "endgame player2win");
-        }
-
-        whileBreaker_Updater = true;
-
-        clientSocket1.close();
-        clientSocket2.close();
-        serverSocket_main.close();
-        serverSocket_updater.close();
     }
 }
